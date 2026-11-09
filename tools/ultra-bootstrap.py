@@ -124,6 +124,7 @@ scoped = {
     "fetcher-cookies.enc": "ultra-fetcher-cookies.enc",
     "instagram-webview-cookies.enc": "ultra-instagram-webview-cookies.enc",
     "instagram-netscape-cookies.enc": "ultra-instagram-netscape-cookies.enc",
+    '"downloads"': '"ultra-downloads"',
     '"downloads", "Thumbnail downloads"': '"ultra-downloads", "INSFAV Ultra · Thumbnail downloads"',
     '"insfav-next-profile"': '"insfav-ultra-next-profile"',
     '"insfav-queue-recovery"': '"insfav-ultra-queue-recovery"',
@@ -503,6 +504,34 @@ native_test_value = native_test_value.replace(
     "@RunWith(RobolectricTestRunner.class)\n@Config(sdk = 28, manifest = Config.NONE)\npublic class NativeCoreTest {"
 )
 unit_test.write_text(native_test_value, encoding="utf-8")
+
+# Android 8+ rejects foreground notifications whose builder channel ID has no created channel.
+notification_test = ROOT / "app/src/test/java/com/instagram/insfav/fetcher/DownloadNotificationTest.java"
+notification_test.write_text(r'''package com.instagram.insfav.fetcher;
+
+import static org.junit.Assert.*;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.content.Context;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 28, manifest = Config.NONE)
+public class DownloadNotificationTest {
+    @Test public void foregroundNotificationUsesAnExistingUltraChannelAndSmallIcon() {
+        Context context = RuntimeEnvironment.getApplication();
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        Notification notification = DownloadNotification.preparing(context);
+        assertEquals("ultra-downloads", notification.getChannelId());
+        assertNotNull(manager.getNotificationChannel(notification.getChannelId()));
+        assertNotNull(notification.getSmallIcon());
+    }
+}
+''', encoding="utf-8")
 
 android_test = ROOT / "app/src/androidTest/java/com/instagram/insfav/NativeCoreInstrumentationTest.java"
 android_test.parent.mkdir(parents=True, exist_ok=True)
