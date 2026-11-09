@@ -901,10 +901,11 @@ pool_text = pool_text.replace(native_matrix_start, native_matrix + native_matrix
 pool_launch = '    FetchService.request(c, "missing");'
 assert pool_text.count(pool_launch) == 1, "Expected one foreground-service instrumentation launch"
 pool_grant = """      if (Build.VERSION.SDK_INT >= 33) {
-        getUiAutomation().executeShellCommand(
-            "pm grant " + c.getPackageName() + " android.permission.POST_NOTIFICATIONS").close();
-        if (!c.getSystemService(NotificationManager.class).areNotificationsEnabled())
-          throw new AssertionError("POST_NOTIFICATIONS permission was not granted to Ultra");
+        getUiAutomation().grantRuntimePermission(
+            c.getPackageName(), android.Manifest.permission.POST_NOTIFICATIONS);
+        if (c.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+            != android.content.pm.PackageManager.PERMISSION_GRANTED)
+          throw new AssertionError("POST_NOTIFICATIONS runtime permission was not granted to Ultra");
       }
 """
 pool_test.write_text(pool_text.replace(pool_launch, pool_grant + pool_launch, 1), encoding="utf-8")
