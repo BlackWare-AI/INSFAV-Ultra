@@ -179,7 +179,7 @@ jobs:
                 "abiLibraries": abi,
             }
             with (runner / "ultra-native-benchmark.txt").open("a", encoding="utf-8") as stream:
-                stream.write("APK_SIZE_RAW=" + json.dumps(record, separators=(",", ":")) + "\\n")
+                stream.write("APK_SIZE_RAW=" + json.dumps(record, separators=(",", ":")) + chr(10))
             PY
             adb install -r "$RUNNER_TEMP/insfav-plus-source/app/build/outputs/apk/debug/app-debug.apk"
             adb install -r app/build/outputs/apk/debug/app-debug.apk
