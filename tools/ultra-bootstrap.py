@@ -149,10 +149,10 @@ if "buildRustCore" not in g:
     insertion = """
 if (ultraNativeCore) {
     tasks.register('buildRustCore', Exec) {
-        workingDir rootProject.projectDir
+        workingDir rootProject.file('rust/insfav-core')
         commandLine 'cargo', 'ndk', '-t', 'arm64-v8a', '-t', 'armeabi-v7a', '-t', 'x86_64',
                 '-o', layout.buildDirectory.dir('generated/ultraJniLibs').get().asFile.absolutePath,
-                'build', '--release', '--manifest-path', 'rust/insfav-core/Cargo.toml'
+                'build', '--release'
     }
     tasks.named('preBuild').configure { dependsOn('buildRustCore') }
 }
