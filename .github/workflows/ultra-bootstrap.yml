@@ -196,4 +196,4 @@ jobs:
           git add -A
           git diff --cached --check
           git commit -m "Bootstrap INSFAV Ultra with isolated Rust core and UI improvements"
-          git push origin "HEAD:\${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
