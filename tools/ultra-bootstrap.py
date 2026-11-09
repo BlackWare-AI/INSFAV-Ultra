@@ -685,6 +685,7 @@ c += r"""
 
 /* One contextual quick-jump; the touch target and proportional handle never reserve list width. */
 #scroll-jump{order:2;min-width:52px;min-height:52px;position:relative;z-index:2}
+#main-scroll.idle #scroll-jump{pointer-events:auto}
 #scroll-jump svg{transition:transform 180ms var(--motion-ease),opacity 140ms ease}
 #scroll-jump[data-direction="start"] svg{transform:rotate(180deg)}
 #scroll-position{position:absolute;right:58px;z-index:3;min-width:54px;padding:5px 8px;border:1px solid #383838;border-radius:10px;background:#111;color:#eee;font:11px system-ui,sans-serif;text-align:center;pointer-events:none}
