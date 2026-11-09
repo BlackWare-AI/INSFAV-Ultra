@@ -31,7 +31,7 @@ shutil.copy2(workflow_backup, ROOT / ".github/workflows/ultra-bootstrap.yml")
 
 # Rewrite the source repository identity without changing the Java namespace or source packages.
 extensions = {".gradle", ".properties", ".xml", ".java", ".kt", ".js", ".css", ".html",
-              ".json", ".yml", ".yaml", ".md", ".tsv", ".txt", ".cjs", ".sh", ".toml", ".rs"}
+              ".json", ".yml", ".yaml", ".md", ".tsv", ".txt", ".py", ".cjs", ".sh", ".toml", ".rs"}
 replacements = [
     ("com.instagram.insfav.plus.test", "com.instagram.insfav.ultra.test"),
     ("com.instagram.insfav.plus", "com.instagram.insfav.ultra"),
