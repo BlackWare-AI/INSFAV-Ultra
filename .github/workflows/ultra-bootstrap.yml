@@ -1,0 +1,189 @@
+name: Ultra one-time bootstrap and verification
+
+on:
+  push:
+    branches: [codex/insfav-ultra-bootstrap]
+    paths:
+      - tools/ultra-bootstrap.py
+      - .github/workflows/ultra-bootstrap.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: insfav-ultra-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    if: github.repository == 'BlackWare-AI/INSFAV-Ultra'
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - name: Checkout Ultra feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: \${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Checkout pinned Plus source, read-only
+        uses: actions/checkout@v4
+        with:
+          repository: BlackWare-AI/INSFAV-Plus
+          ref: 356ba98a7ab479caf1b64526133f05944ce17efc
+          path: \${{ runner.temp }}/insfav-plus-source
+          persist-credentials: false
+
+      - name: Correct bootstrap toolchain metadata and preserve the one-shot runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("tools/ultra-bootstrap.py")
+          s = p.read_text()
+          s = s.replace('ROOT / "rust/rust-toolchain.toml"', 'ROOT / "rust-toolchain.toml"')
+          s = s.replace('replace(\\'"22"\\', \\'"1\\')', 'replace(\\'"22"\\', \\'"1"\\')')
+          p.write_text(s)
+          PY
+          cp tools/ultra-bootstrap.py "$RUNNER_TEMP/ultra-bootstrap.py"
+          cp .github/workflows/ultra-bootstrap.yml "$RUNNER_TEMP/ultra-bootstrap.yml"
+
+      - name: Bootstrap complete pinned source tree and Ultra-specific implementation
+        run: |
+          set -euo pipefail
+          python3 "$RUNNER_TEMP/ultra-bootstrap.py" "$RUNNER_TEMP/insfav-plus-source"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Regenerate packaged WebView assets from web sources
+        run: |
+          npm ci
+          npm run web
+          git diff --check
+
+      - name: Web unit and large-list browser tests
+        run: |
+          npm test
+          npx playwright install --with-deps chromium
+          env -u CHROME_BIN npm run test:chromium
+          npm run test:performance
+
+      - name: Set up Java and Android SDK with pinned NDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.2.12479018'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - name: Rust unit tests and reproducible Android ABI libraries
+        run: |
+          cargo test --manifest-path rust/insfav-core/Cargo.toml
+          cargo install cargo-ndk --version 3.5.4 --locked
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
+            -o app/build/generated/ultraJniLibs \
+            build --release --manifest-path rust/insfav-core/Cargo.toml
+          test -s app/build/generated/ultraJniLibs/arm64-v8a/libinsfav_core.so
+          test -s app/build/generated/ultraJniLibs/armeabi-v7a/libinsfav_core.so
+          test -s app/build/generated/ultraJniLibs/x86_64/libinsfav_core.so
+
+      - name: Android Java tests, lint and default Java-fallback APK
+        run: |
+          ./gradlew :app:testDebugUnitTest :app:jacocoDebugReport :app:lintDebug \
+            :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
+
+      - name: Build the optional native-enabled instrumentation variant
+        run: |
+          ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest \
+            -PultraNativeCore=true --no-daemon
+
+      - name: Build pinned Plus debug app for coexistence validation
+        working-directory: \${{ runner.temp }}/insfav-plus-source
+        run: |
+          npm ci
+          npm run web
+          ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Run Ultra instrumentation, JNI equivalence and same-runner benchmark
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            ./gradlew :app:connectedDebugAndroidTest -PultraNativeCore=true --no-daemon
+            adb logcat -d | grep 'ULTRA_NATIVE_BENCHMARK_RAW=' > "$RUNNER_TEMP/ultra-native-benchmark.txt"
+            test -s "$RUNNER_TEMP/ultra-native-benchmark.txt"
+            adb install -r "$RUNNER_TEMP/insfav-plus-source/app/build/outputs/apk/debug/app-debug.apk"
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell monkey -p com.instagram.insfav.plus 1
+            adb shell monkey -p com.instagram.insfav.ultra 1
+            sleep 3
+            adb shell pm list packages | grep -qx 'package:com.instagram.insfav.plus'
+            adb shell pm list packages | grep -qx 'package:com.instagram.insfav.ultra'
+            adb shell run-as com.instagram.insfav.plus sh -c 'printf plus-private > files/ultra-coexistence-probe.txt'
+            adb shell run-as com.instagram.insfav.ultra sh -c 'test ! -e files/ultra-coexistence-probe.txt'
+            adb shell run-as com.instagram.insfav.ultra sh -c 'printf ultra-private > files/ultra-coexistence-probe.txt'
+            adb shell run-as com.instagram.insfav.plus sh -c 'test "$(cat files/ultra-coexistence-probe.txt)" = plus-private'
+            adb shell run-as com.instagram.insfav.ultra sh -c 'test "$(cat files/ultra-coexistence-probe.txt)" = ultra-private'
+            adb shell pm list packages -U | grep -E 'com.instagram.insfav.(plus|ultra) '
+            adb shell run-as com.instagram.insfav.plus rm -f files/ultra-coexistence-probe.txt
+            adb shell run-as com.instagram.insfav.ultra rm -f files/ultra-coexistence-probe.txt
+
+      - name: Verify Ultra package identity, label, assets and debug APK
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > "$RUNNER_TEMP/badging.txt"
+          grep -F "package: name='com.instagram.insfav.ultra'" "$RUNNER_TEMP/badging.txt"
+          grep -F "application-label:'INSFAV Ultra'" "$RUNNER_TEMP/badging.txt"
+          grep -R "github.repository == 'BlackWare-AI/INSFAV-Plus'" .github && exit 1 || true
+          grep -R "com.instagram.insfav.plus.test" app/src app/build.gradle && exit 1 || true
+          python3 tools/verify-apk.py "$APK" --version 1.0.0 --code 1 --output artifacts/ultra-debug-apk.json
+          git diff --check
+
+      - name: Save benchmark and verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: INSFAV-Ultra-bootstrap-verification
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/androidTest/debug/*.apk
+            app/build/reports/
+            app/build/test-results/
+            app/build/outputs/androidTest-results/
+            artifacts/ultra-debug-apk.json
+            \${{ runner.temp }}/ultra-native-benchmark.txt
+          retention-days: 30
+
+      - name: Commit tested Ultra project and remove one-shot bootstrap files
+        if: success()
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -f tools/ultra-bootstrap.py
+          rm -f .github/workflows/ultra-bootstrap.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Bootstrap INSFAV Ultra with isolated Rust core and UI improvements"
+          git push origin "HEAD:\${GITHUB_REF_NAME}"
