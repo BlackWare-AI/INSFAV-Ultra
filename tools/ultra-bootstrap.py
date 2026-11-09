@@ -56,7 +56,7 @@ replacements = [
     ("secrets.KEY_ALIAS", "secrets.ULTRA_RELEASE_KEY_ALIAS"),
     ("plus-v", "ultra-v"),
     ("INSFAV-Plus-", "INSFAV-Ultra-"),
-    ("cffc756bf3d517b02780093e7d0d80ae737ce9e3b035a86a094f5698ffab35c8", "abcc1db119487f1a462de6548b735e50f32af4f27baa1c2c9bbf4cb934b0153d"),
+    ("cffc756bf3d517b02780093e7d0d80ae737ce9e3b035a86a094f5698ffab35c8", "41603cb287ae84753f5c203ed9871a4780672f51643cd7c7df386c5b94bed664"),
     ("fetcher-queue.db", "ultra-fetcher-queue.db"),
     ("fetcher-cookies.enc", "ultra-fetcher-cookies.enc"),
     ("instagram-webview-cookies.enc", "ultra-instagram-webview-cookies.enc"),
