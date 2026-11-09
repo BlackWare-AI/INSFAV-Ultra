@@ -12,7 +12,7 @@ def run(args, **kwargs):
     return subprocess.run(args, check=True, **kwargs)
 
 assert subprocess.check_output(["git", "branch", "--show-current"], text=True).strip() == BRANCH
-assert subprocess.check_output(["git", "remote", "get-url", "origin"], text=True).strip().endswith("/INSFAV-Ultra.git")
+assert subprocess.check_output(["git", "remote", "get-url", "origin"], text=True).strip().removesuffix(".git").endswith("/INSFAV-Ultra")
 run(["git", "merge-base", "--is-ancestor", ULTRA_BASE, "HEAD"])
 assert subprocess.check_output(["git", "status", "--porcelain"], text=True) == "", "Refusing to overwrite a dirty Ultra worktree"
 assert subprocess.check_output(["git", "-C", str(SOURCE), "rev-parse", "HEAD"], text=True).strip() == PLUS_SHA, "Pinned Plus source SHA mismatch"
