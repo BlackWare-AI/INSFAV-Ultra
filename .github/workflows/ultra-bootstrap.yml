@@ -152,8 +152,13 @@ jobs:
           script: |
             set -euo pipefail
             ./gradlew :app:connectedDebugAndroidTest -PultraNativeCore=true --no-daemon
-            TEST_LOG="$(find app/build/outputs/androidTest-results/connected/debug -name test-results.log -print -quit)"
-            test -n "$TEST_LOG"
+            TEST_LOG="$(find "$GITHUB_WORKSPACE" -type f -path '*/app/build/outputs/androidTest-results/connected/debug/*/testlog/test-results.log' -print -quit)"
+            if [ -z "$TEST_LOG" ]; then
+              echo "Instrumentation test log was not found. Candidate files:"
+              find "$GITHUB_WORKSPACE" -type f -name 'test-results.log' -print
+              exit 1
+            fi
+            cp "$TEST_LOG" "$RUNNER_TEMP/ultra-instrumentation-test-results.log"
             grep -q 'ULTRA_NATIVE_JNI_EQUIVALENCE_OK' "$TEST_LOG"
             grep -q 'POOL_MATRIX_OK' "$TEST_LOG"
             grep -q 'BACKGROUND_HOME_TASK_OK' "$TEST_LOG"
@@ -226,6 +231,7 @@ jobs:
             app/build/outputs/apk/androidTest/debug/*.apk
             ${{ runner.temp }}/INSFAV-Ultra-java-fallback-debug.apk
             artifacts/ultra-java-fallback-apk.json
+            ${{ runner.temp }}/ultra-instrumentation-test-results.log
             app/build/reports/
             app/build/test-results/
             app/build/outputs/androidTest-results/
