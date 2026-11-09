@@ -679,6 +679,7 @@ c += r"""
 #fetcher-screen .fetcher-toggle{padding:12px 2px}
 #fetcher-screen .metrics{gap:8px}
 #fetcher-screen .progress-card{padding:12px}
+#fetcher-screen #fetcher-process{background:#050505;border:1px solid #303030;border-radius:16px}
 #fetcher-screen button.danger,#fetcher-screen .btn.danger{background:#1b0d0d;border-color:#5a3030;color:#f0cccc}
 @media(max-width:360px){:is(#settings,#features-screen,#fetcher-screen) .screen-content{padding-inline:11px}#fetcher-screen .fetcher-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){:is(#settings,#features-screen,#fetcher-screen) *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
