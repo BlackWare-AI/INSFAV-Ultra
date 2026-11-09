@@ -895,6 +895,7 @@ assert pool_text.count(native_matrix_start) == 1, "Expected one custom instrumen
 native_matrix = """      com.instagram.insfav.NativeCoreInstrumentationTest nativeCore =
           new com.instagram.insfav.NativeCoreInstrumentationTest();
       nativeCore.nativeAndJavaAreEquivalentAcrossRequiredCases();
+      sendStatus(0, status("ULTRA_NATIVE_JNI_EQUIVALENCE_OK"));
       nativeCore.benchmarkJavaAgainstRustAndEmitRawResults();
 """
 pool_text = pool_text.replace(native_matrix_start, native_matrix + native_matrix_start, 1)
