@@ -38,6 +38,7 @@ replacements = [
     ("BlackWare-AI/INSFAV-Plus", "BlackWare-AI/INSFAV-Ultra"),
     ("INSFAV-Plus", "INSFAV-Ultra"),
     ("INSFAV Plus", "INSFAV Ultra"),
+    ("const plus=require('../package.json').name.includes('plus')", "const plus=true"),
     ("insfav-plus", "insfav-ultra"),
     ("insfav_plus", "insfav_ultra"),
     ("plus-release", "ultra-release"),
@@ -327,9 +328,11 @@ public final class NativeCore {
     }
     private static final boolean LIBRARY_AVAILABLE;
     static {
-        boolean loaded;
-        try { System.loadLibrary("insfav_core"); loaded = true; }
-        catch (LinkageError | SecurityException unavailable) { loaded = false; }
+        boolean loaded = false;
+        if (BuildConfig.ULTRA_NATIVE_CORE) {
+            try { System.loadLibrary("insfav_core"); loaded = true; }
+            catch (LinkageError | SecurityException unavailable) { loaded = false; }
+        }
         LIBRARY_AVAILABLE = loaded;
     }
     private NativeCore() {}
@@ -654,10 +657,10 @@ c += r"""
 :is(#settings,#features-screen,#fetcher-screen) h2{font-size:18px;letter-spacing:-.25px}
 :is(#settings,#features-screen,#fetcher-screen) h3{font-size:15px;letter-spacing:.01em;text-transform:none;color:#ddd;margin:18px 2px 10px}
 :is(#settings,#features-screen,#fetcher-screen) .muted,:is(#settings,#features-screen,#fetcher-screen) small{color:#858585}
-:is(#settings,#features-screen,#fetcher-screen) .metric,:is(#settings,#features-screen,#fetcher-screen) .action-list,:is(#settings,#features-screen,#fetcher-screen) details,:is(#settings,#features-screen,#fetcher-screen) .features,:is(#settings,#features-screen,#fetcher-screen) .progress-card{background:var(--ultra-deep);border:1px solid var(--ultra-border);border-radius:20px}
-:is(#settings,#features-screen,#fetcher-screen) .metric{padding:12px}
-:is(#settings,#features-screen,#fetcher-screen) .metric b{font-size:18px;color:#f5f5f5}
-:is(#settings,#features-screen,#fetcher-screen) .metric span{font-size:11px;color:#888}
+:is(#settings,#features-screen,#fetcher-screen) .action-list,:is(#settings,#features-screen,#fetcher-screen) details,:is(#settings,#features-screen,#fetcher-screen) .features,:is(#settings,#features-screen,#fetcher-screen) .progress-card{background:var(--ultra-deep);border:1px solid var(--ultra-border);border-radius:20px}
+#fetcher-screen .metric{background:#050505;border:1px solid #303030;border-radius:20px;padding:12px}
+#fetcher-screen .metric b{font-size:18px;color:#f5f5f5}
+#fetcher-screen .metric span{font-size:11px;color:#888}
 :is(#settings,#features-screen,#fetcher-screen) .action-list{overflow:hidden}
 :is(#settings,#features-screen,#fetcher-screen) .action-list button{min-height:48px;padding:12px 14px;color:#e5e5e5;background:#050505;border-bottom:1px solid #252525;font-size:13px;text-align:left}
 :is(#settings,#features-screen,#fetcher-screen) .action-list button:last-child{border-bottom:0}
@@ -720,7 +723,7 @@ const {chromium}=require('playwright');
   await page.goto('http://127.0.0.1:'+server.address().port);
   await page.locator('#splash').waitFor({state:'hidden'});await settled(page);return page;
  }
- async function expand(page){await page.locator('.folder-header').first().click();await page.locator('.folder-header').nth(1).click();await settled(page);}
+ async function expand(page){await page.locator('.folder-header').nth(1).click();await page.locator('.folder-header').first().click();await settled(page);}
  async function metrics(page){return page.evaluate(()=>{
   const doc=document.scrollingElement,t=document.querySelector('#scroll-track'),h=document.querySelector('#scroll-thumb');
   return {top:doc.scrollTop,max:doc.scrollHeight-doc.clientHeight,track:t.clientHeight,hit:h.clientHeight,
