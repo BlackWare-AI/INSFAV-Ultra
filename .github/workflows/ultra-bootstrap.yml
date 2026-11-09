@@ -1,4 +1,4 @@
-name: Ultra one-time bootstrap and verification
+name: Ultra one-time bootstrap and verification # retry after scoped process-card CSS fix
 
 on:
   push:
