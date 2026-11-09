@@ -42,10 +42,13 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           p = Path("tools/ultra-bootstrap.py")
-          s = p.read_text()
-          s = s.replace('ROOT / "rust/rust-toolchain.toml"', 'ROOT / "rust-toolchain.toml"')
-          s = s.replace('replace(\\'"22"\\', \\'"1\\')', 'replace(\\'"22"\\', \\'"1"\\')')
-          p.write_text(s)
+          lines = p.read_text().splitlines()
+          for i, line in enumerate(lines):
+              if 'ROOT / "rust/rust-toolchain.toml"' in line:
+                  lines[i] = line.replace("rust/rust-toolchain.toml", "rust-toolchain.toml")
+              if 'value = value.replace("1.1.16"' in line:
+                  lines[i] = """        value = value.replace("1.1.16", "1.0.0").replace(chr(39) + "22" + chr(39), chr(39) + "1" + chr(39)).replace(chr(34) + "22" + chr(34), chr(34) + "1" + chr(34))"""
+          p.write_text("\n".join(lines) + "\n")
           PY
           cp tools/ultra-bootstrap.py "$RUNNER_TEMP/ultra-bootstrap.py"
           cp .github/workflows/ultra-bootstrap.yml "$RUNNER_TEMP/ultra-bootstrap.yml"
