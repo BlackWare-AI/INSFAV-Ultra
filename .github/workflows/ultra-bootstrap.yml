@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: insfav-ultra-bootstrap
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   bootstrap:
