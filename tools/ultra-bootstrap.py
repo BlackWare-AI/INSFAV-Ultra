@@ -23,7 +23,7 @@ shutil.copy2(ROOT / ".github/workflows/ultra-bootstrap.yml", workflow_backup)
 
 run(["rsync", "-a", "--delete", "--exclude=.git", str(SOURCE) + "/", str(ROOT) + "/"])
 (ROOT / "LICENSE").write_text(
-    license_text.rstrip() + "\nCopyright (c) 2026 BlackWare-AI\n",
+    license_text.replace("Copyright (c) 2026 BlackWare", "Copyright (c) 2026 BlackWare\nCopyright (c) 2026 BlackWare-AI", 1),
     encoding="utf-8"
 )
 (ROOT / ".github/workflows/ultra-bootstrap.yml").parent.mkdir(parents=True, exist_ok=True)
