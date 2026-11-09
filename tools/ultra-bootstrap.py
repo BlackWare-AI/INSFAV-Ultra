@@ -588,7 +588,7 @@ public class NativeCoreInstrumentationTest {
                 .append(",\"heapDeltaBytes\":").append(afterUsed-beforeUsed).append('}');
         }
         report.append("]}");
-        System.out.println("ULTRA_NATIVE_BENCHMARK_RAW=" + report);
+        android.util.Log.i("INSFAV_ULTRA_NATIVE", "ULTRA_NATIVE_BENCHMARK_RAW=" + report);
     }
 }
 ''', encoding="utf-8")
@@ -890,6 +890,14 @@ with (ROOT / "PERFORMANCE.md").open("a", encoding="utf-8") as f:
 # The foreground service test explicitly grants this permission before checking its ongoing card.
 pool_test = ROOT / "app/src/androidTest/java/com/instagram/insfav/fetcher/PoolInstrumentation.java"
 pool_text = pool_test.read_text(encoding="utf-8")
+native_matrix_start = "      com.instagram.insfav.RescanDeviceBenchmark.run(this);"
+assert pool_text.count(native_matrix_start) == 1, "Expected one custom instrumentation entry point"
+native_matrix = """      com.instagram.insfav.NativeCoreInstrumentationTest nativeCore =
+          new com.instagram.insfav.NativeCoreInstrumentationTest();
+      nativeCore.nativeAndJavaAreEquivalentAcrossRequiredCases();
+      nativeCore.benchmarkJavaAgainstRustAndEmitRawResults();
+"""
+pool_text = pool_text.replace(native_matrix_start, native_matrix + native_matrix_start, 1)
 pool_launch = '      FetchService.request(c, "missing");'
 assert pool_text.count(pool_launch) == 1, "Expected one foreground-service instrumentation launch"
 pool_grant = """      if (Build.VERSION.SDK_INT >= 33) {
