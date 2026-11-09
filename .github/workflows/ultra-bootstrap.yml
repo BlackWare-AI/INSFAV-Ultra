@@ -24,7 +24,7 @@ jobs:
       - name: Checkout Ultra feature branch
         uses: actions/checkout@v4
         with:
-          ref: \${{ github.ref_name }}
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
       - name: Checkout pinned Plus source, read-only
@@ -32,7 +32,7 @@ jobs:
         with:
           repository: BlackWare-AI/INSFAV-Plus
           ref: 356ba98a7ab479caf1b64526133f05944ce17efc
-          path: \${{ runner.temp }}/insfav-plus-source
+          path: ${{ runner.temp }}/insfav-plus-source
           persist-credentials: false
 
       - name: Correct bootstrap toolchain metadata and preserve the one-shot runner
@@ -111,7 +111,7 @@ jobs:
             -PultraNativeCore=true --no-daemon
 
       - name: Build pinned Plus debug app for coexistence validation
-        working-directory: \${{ runner.temp }}/insfav-plus-source
+        working-directory: ${{ runner.temp }}/insfav-plus-source
         run: |
           npm ci
           npm run web
@@ -170,13 +170,13 @@ jobs:
             app/build/test-results/
             app/build/outputs/androidTest-results/
             artifacts/ultra-debug-apk.json
-            \${{ runner.temp }}/ultra-native-benchmark.txt
+            ${{ runner.temp }}/ultra-native-benchmark.txt
           retention-days: 30
 
       - name: Commit tested Ultra project and remove one-shot bootstrap files
         if: success()
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           rm -f tools/ultra-bootstrap.py
