@@ -898,7 +898,7 @@ native_matrix = """      com.instagram.insfav.NativeCoreInstrumentationTest nati
       nativeCore.benchmarkJavaAgainstRustAndEmitRawResults();
 """
 pool_text = pool_text.replace(native_matrix_start, native_matrix + native_matrix_start, 1)
-pool_launch = '      FetchService.request(c, "missing");'
+pool_launch = '    FetchService.request(c, "missing");'
 assert pool_text.count(pool_launch) == 1, "Expected one foreground-service instrumentation launch"
 pool_grant = """      if (Build.VERSION.SDK_INT >= 33) {
         getUiAutomation().executeShellCommand(
