@@ -886,6 +886,21 @@ with (ROOT / "PERFORMANCE.md").open("a", encoding="utf-8") as f:
     f.write("""
 \n## Ultra bootstrap baseline and Rust decision\n\nThe tables above are inherited, unchanged evidence from pinned Plus source commit 356ba98a7ab479caf1b64526133f05944ce17efc; they are not measurements performed on Ultra. Ultra keeps the Java production path enabled by default. The isolated Rust parser/JNI prototype is opt-in with -PultraNativeCore=true, targets arm64-v8a, armeabi-v7a, and x86_64, and must not be enabled by default until same-runner Java/JNI medians show a repeatable improvement of at least 15% with no correctness, memory, startup, APK-size, or regression issue. Instrumentation emits raw 1k/10k/15k results for review. No Rust performance win is claimed in this bootstrap change.\n""")
 
+# Android 13+ hides app notifications until POST_NOTIFICATIONS is granted.
+# The foreground service test explicitly grants this permission before checking its ongoing card.
+pool_test = ROOT / "app/src/androidTest/java/com/instagram/insfav/fetcher/PoolInstrumentation.java"
+pool_text = pool_test.read_text(encoding="utf-8")
+pool_launch = '      FetchService.request(c, "missing");'
+assert pool_text.count(pool_launch) == 1, "Expected one foreground-service instrumentation launch"
+pool_grant = """      if (Build.VERSION.SDK_INT >= 33) {
+        getUiAutomation().executeShellCommand(
+            "pm grant " + c.getPackageName() + " android.permission.POST_NOTIFICATIONS").close();
+        if (!c.getSystemService(NotificationManager.class).areNotificationsEnabled())
+          throw new AssertionError("POST_NOTIFICATIONS permission was not granted to Ultra");
+      }
+"""
+pool_test.write_text(pool_text.replace(pool_launch, pool_grant + pool_launch, 1), encoding="utf-8")
+
 # The one-shot workflow is not part of the final repository tree.
 bootstrap_workflow = ROOT / ".github/workflows/ultra-bootstrap.yml"
 if bootstrap_workflow.exists(): bootstrap_workflow.unlink()
