@@ -57,6 +57,14 @@ replacements = [
     ("plus-v", "ultra-v"),
     ("INSFAV-Plus-", "INSFAV-Ultra-"),
     ("cffc756bf3d517b02780093e7d0d80ae737ce9e3b035a86a094f5698ffab35c8", "63eb0514f095acfcf46081f6402c2e4ffca08cc2939399b97dd91ade9fe31ee1"),
+    ("fetcher-queue.db", "ultra-fetcher-queue.db"),
+    ("fetcher-cookies.enc", "ultra-fetcher-cookies.enc"),
+    ("instagram-webview-cookies.enc", "ultra-instagram-webview-cookies.enc"),
+    ("instagram-netscape-cookies.enc", "ultra-instagram-netscape-cookies.enc"),
+    ("thumbnail-fetcher", "ultra-thumbnail-fetcher"),
+    ("insfav.cookie.aes.v1", "insfav.ultra.cookie.aes.v1"),
+    ("insfav-next-profile", "insfav-ultra-next-profile"),
+    ("insfav-queue-recovery", "insfav-ultra-queue-recovery"),
 ]
 for path in ROOT.rglob("*"):
     if not path.is_file() or path.suffix.lower() not in extensions:
@@ -72,6 +80,19 @@ for path in ROOT.rglob("*"):
         value = value.replace("insfav-plus-build-tools", "insfav-ultra-build-tools")
     if value != original:
         path.write_text(value, encoding="utf-8")
+
+updates_test = ROOT / "app/src/test/java/com/instagram/insfav/updates/AppUpdatesTest.java"
+if updates_test.exists():
+    value = updates_test.read_text(encoding="utf-8")
+    value = value.replace(
+        'app.endsWith("plus")?"BlackWare-AI/INSFAV":"BlackWare-AI/INSFAV-Ultra"',
+        'app.endsWith(".ultra")?"BlackWare-AI/INSFAV-Plus":"BlackWare-AI/INSFAV-Ultra"'
+    )
+    value = value.replace(
+        'c.getPackageName().endsWith(".plus")?"com.instagram.insfav":"com.instagram.insfav.ultra"',
+        'c.getPackageName().endsWith(".ultra")?"com.instagram.insfav":"com.instagram.insfav.ultra"'
+    )
+    updates_test.write_text(value, encoding="utf-8")
 
 (ROOT / "version.properties").write_text("VERSION_NAME=1.0.0\nVERSION_CODE=1\n", encoding="utf-8")
 settings = ROOT / "settings.gradle"
@@ -474,8 +495,12 @@ native_test_value = native_test_value.replace(
     "import org.junit.Test;\nimport org.junit.runner.RunWith;\nimport org.robolectric.RobolectricTestRunner;"
 )
 native_test_value = native_test_value.replace(
+    "import org.robolectric.RobolectricTestRunner;",
+    "import org.robolectric.RobolectricTestRunner;\nimport org.robolectric.annotation.Config;"
+)
+native_test_value = native_test_value.replace(
     "public class NativeCoreTest {",
-    "@RunWith(RobolectricTestRunner.class)\npublic class NativeCoreTest {"
+    "@RunWith(RobolectricTestRunner.class)\n@Config(sdk = 28, manifest = Config.NONE)\npublic class NativeCoreTest {"
 )
 unit_test.write_text(native_test_value, encoding="utf-8")
 
