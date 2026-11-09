@@ -32,7 +32,7 @@ jobs:
         with:
           repository: BlackWare-AI/INSFAV-Plus
           ref: 356ba98a7ab479caf1b64526133f05944ce17efc
-          path: ${{ runner.temp }}/insfav-plus-source
+          path: plus-source
           persist-credentials: false
 
       - name: Correct bootstrap toolchain metadata and preserve the one-shot runner
@@ -56,7 +56,7 @@ jobs:
       - name: Bootstrap complete pinned source tree and Ultra-specific implementation
         run: |
           set -euo pipefail
-          python3 "$RUNNER_TEMP/ultra-bootstrap.py" "$RUNNER_TEMP/insfav-plus-source"
+          python3 "$RUNNER_TEMP/ultra-bootstrap.py" "$GITHUB_WORKSPACE/plus-source"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -114,7 +114,7 @@ jobs:
             -PultraNativeCore=true --no-daemon
 
       - name: Build pinned Plus debug app for coexistence validation
-        working-directory: ${{ runner.temp }}/insfav-plus-source
+        working-directory: plus-source
         run: |
           npm ci
           npm run web
@@ -133,7 +133,7 @@ jobs:
             ./gradlew :app:connectedDebugAndroidTest -PultraNativeCore=true --no-daemon
             adb logcat -d | grep 'ULTRA_NATIVE_BENCHMARK_RAW=' > "$RUNNER_TEMP/ultra-native-benchmark.txt"
             test -s "$RUNNER_TEMP/ultra-native-benchmark.txt"
-            adb install -r "$RUNNER_TEMP/insfav-plus-source/app/build/outputs/apk/debug/app-debug.apk"
+            adb install -r "plus-source/app/build/outputs/apk/debug/app-debug.apk"
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell monkey -p com.instagram.insfav.plus 1
             adb shell monkey -p com.instagram.insfav.ultra 1
