@@ -117,6 +117,7 @@ jobs:
         run: |
           ./gradlew :app:testDebugUnitTest :app:jacocoDebugReport :app:lintDebug \
             :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/INSFAV-Ultra-java-fallback-debug.apk"
 
       - name: Build the optional native-enabled instrumentation variant
         run: |
@@ -151,8 +152,35 @@ jobs:
           script: |
             set -euo pipefail
             ./gradlew :app:connectedDebugAndroidTest -PultraNativeCore=true --no-daemon
+            TEST_LOG="$(find app/build/outputs/androidTest-results/connected/debug -name test-results.log -print -quit)"
+            test -n "$TEST_LOG"
+            grep -q 'ULTRA_NATIVE_JNI_EQUIVALENCE_OK' "$TEST_LOG"
+            grep -q 'POOL_MATRIX_OK' "$TEST_LOG"
+            grep -q 'BACKGROUND_HOME_TASK_OK' "$TEST_LOG"
             adb logcat -d | grep 'ULTRA_NATIVE_BENCHMARK_RAW=' > "$RUNNER_TEMP/ultra-native-benchmark.txt"
             test -s "$RUNNER_TEMP/ultra-native-benchmark.txt"
+            python3 - <<'PY'
+            import hashlib, json, os
+            from pathlib import Path
+            runner = Path(os.environ["RUNNER_TEMP"])
+            fallback = runner / "INSFAV-Ultra-java-fallback-debug.apk"
+            native = Path("app/build/outputs/apk/debug/app-debug.apk")
+            abi_root = Path("app/build/generated/ultraJniLibs")
+            assert fallback.is_file() and native.is_file()
+            abi = {}
+            for name in ("arm64-v8a", "armeabi-v7a", "x86_64"):
+                lib = abi_root / name / "libinsfav_core.so"
+                assert lib.is_file()
+                abi[name] = {"bytes": lib.stat().st_size, "sha256": hashlib.sha256(lib.read_bytes()).hexdigest()}
+            record = {
+                "runner": "Android emulator x86_64",
+                "javaFallbackApk": {"bytes": fallback.stat().st_size, "sha256": hashlib.sha256(fallback.read_bytes()).hexdigest()},
+                "nativeEnabledApk": {"bytes": native.stat().st_size, "sha256": hashlib.sha256(native.read_bytes()).hexdigest()},
+                "abiLibraries": abi,
+            }
+            with (runner / "ultra-native-benchmark.txt").open("a", encoding="utf-8") as stream:
+                stream.write("APK_SIZE_RAW=" + json.dumps(record, separators=(",", ":")) + "\\n")
+            PY
             adb install -r "$RUNNER_TEMP/insfav-plus-source/app/build/outputs/apk/debug/app-debug.apk"
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell monkey -p com.instagram.insfav.plus 1
@@ -160,6 +188,8 @@ jobs:
             sleep 3
             adb shell pm list packages | grep -qx 'package:com.instagram.insfav.plus'
             adb shell pm list packages | grep -qx 'package:com.instagram.insfav.ultra'
+            adb shell run-as com.instagram.insfav.plus mkdir -p files
+            adb shell run-as com.instagram.insfav.ultra mkdir -p files
             adb shell run-as com.instagram.insfav.plus sh -c 'printf plus-private > files/ultra-coexistence-probe.txt'
             adb shell run-as com.instagram.insfav.ultra sh -c 'test ! -e files/ultra-coexistence-probe.txt'
             adb shell run-as com.instagram.insfav.ultra sh -c 'printf ultra-private > files/ultra-coexistence-probe.txt'
@@ -173,9 +203,14 @@ jobs:
         run: |
           set -euo pipefail
           APK=app/build/outputs/apk/debug/app-debug.apk
+          FALLBACK="$RUNNER_TEMP/INSFAV-Ultra-java-fallback-debug.apk"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > "$RUNNER_TEMP/badging.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$FALLBACK" > "$RUNNER_TEMP/fallback-badging.txt"
           grep -F "package: name='com.instagram.insfav.ultra'" "$RUNNER_TEMP/badging.txt"
           grep -F "application-label:'INSFAV Ultra'" "$RUNNER_TEMP/badging.txt"
+          grep -F "package: name='com.instagram.insfav.ultra'" "$RUNNER_TEMP/fallback-badging.txt"
+          grep -F "application-label:'INSFAV Ultra'" "$RUNNER_TEMP/fallback-badging.txt"
+          python3 tools/verify-apk.py "$FALLBACK" --version 1.0.0 --code 1 --output artifacts/ultra-java-fallback-apk.json
           grep -R "github.repository == 'BlackWare-AI/INSFAV-Plus'" .github && exit 1 || true
           grep -R "com.instagram.insfav.plus.test" app/src app/build.gradle && exit 1 || true
           python3 tools/verify-apk.py "$APK" --version 1.0.0 --code 1 --output artifacts/ultra-debug-apk.json
@@ -189,6 +224,8 @@ jobs:
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/androidTest/debug/*.apk
+            ${{ runner.temp }}/INSFAV-Ultra-java-fallback-debug.apk
+            artifacts/ultra-java-fallback-apk.json
             app/build/reports/
             app/build/test-results/
             app/build/outputs/androidTest-results/
