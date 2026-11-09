@@ -120,6 +120,30 @@ for rel in [
         text = text.replace(old, new)
     p.write_text(text, encoding="utf-8")
 
+# Robolectric and instrumentation fixtures must address Ultra's isolated storage names.
+# The source rename is intentionally mirrored only in test fixtures; persisted JSON,
+# SQLite table layouts, cookie payloads, and migration schemas remain unchanged.
+for test_root in [ROOT / "app/src/test/java", ROOT / "app/src/androidTest/java"]:
+    if not test_root.exists():
+        continue
+    for p in test_root.rglob("*.java"):
+        value = p.read_text(encoding="utf-8")
+        original = value
+        for legacy, ultra in scoped.items():
+            value = value.replace(legacy, ultra)
+        if value != original:
+            p.write_text(value, encoding="utf-8")
+
+# Tests that exercise foreign-app rejection must keep the other app as the negative fixture.
+updates_test = ROOT / "app/src/test/java/com/instagram/insfav/updates/AppUpdatesTest.java"
+if updates_test.exists():
+    value = updates_test.read_text(encoding="utf-8")
+    value = value.replace('app.endsWith("plus") ? "BlackWare-AI/INSFAV" : "BlackWare-AI/INSFAV-Ultra"',
+                          'app.endsWith("ultra") ? "BlackWare-AI/INSFAV" : "BlackWare-AI/INSFAV-Ultra"')
+    value = value.replace('c.getPackageName().endsWith(".plus") ? "com.instagram.insfav" : "com.instagram.insfav.ultra"',
+                          'c.getPackageName().endsWith(".ultra") ? "com.instagram.insfav" : "com.instagram.insfav.ultra"')
+    updates_test.write_text(value, encoding="utf-8")
+
 # Rename Plus-only publisher helper scripts to Ultra names.
 for old, new in [
     ("tools/publish-plus.py", "tools/publish-ultra.py"),
@@ -443,6 +467,16 @@ public class NativeCoreTest {
     }
 }
 ''', encoding="utf-8")
+native_test_value = unit_test.read_text(encoding="utf-8")
+native_test_value = native_test_value.replace(
+    "import org.junit.Test;",
+    "import org.junit.Test;\nimport org.junit.runner.RunWith;\nimport org.robolectric.RobolectricTestRunner;"
+)
+native_test_value = native_test_value.replace(
+    "public class NativeCoreTest {",
+    "@RunWith(RobolectricTestRunner.class)\npublic class NativeCoreTest {"
+)
+unit_test.write_text(native_test_value, encoding="utf-8")
 
 android_test = ROOT / "app/src/androidTest/java/com/instagram/insfav/NativeCoreInstrumentationTest.java"
 android_test.parent.mkdir(parents=True, exist_ok=True)
