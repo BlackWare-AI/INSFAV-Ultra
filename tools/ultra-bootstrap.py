@@ -14,7 +14,7 @@ def run(args, **kwargs):
 assert subprocess.check_output(["git", "branch", "--show-current"], text=True).strip() == BRANCH
 assert subprocess.check_output(["git", "remote", "get-url", "origin"], text=True).strip().removesuffix(".git").endswith("/INSFAV-Ultra")
 run(["git", "merge-base", "--is-ancestor", ULTRA_BASE, "HEAD"])
-assert subprocess.check_output(["git", "status", "--porcelain"], text=True) == "", "Refusing to overwrite a dirty Ultra worktree"
+dirty = subprocess.check_output(["git", "status", "--porcelain"], text=True).strip()\nif dirty:\n    raise AssertionError("Refusing to overwrite dirty Ultra worktree; status: " + dirty)
 assert subprocess.check_output(["git", "-C", str(SOURCE), "rev-parse", "HEAD"], text=True).strip() == PLUS_SHA, "Pinned Plus source SHA mismatch"
 
 license_text = subprocess.check_output(["git", "show", ULTRA_BASE + ":LICENSE"], text=True)
