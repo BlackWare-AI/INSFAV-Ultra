@@ -111,6 +111,7 @@ for rel in [
     "app/src/main/java/com/instagram/insfav/fetcher/SessionState.java",
     "app/src/main/java/com/instagram/insfav/fetcher/QueueStore.java",
     "app/src/main/java/com/instagram/insfav/fetcher/CookieVault.java",
+    "app/src/main/java/com/instagram/insfav/fetcher/NetscapeBrowserCookies.java",
     "app/src/main/java/com/instagram/insfav/fetcher/DownloadNotification.java",
     "app/src/main/java/com/instagram/insfav/fetcher/WorkScheduler.java",
 ]:
@@ -138,10 +139,10 @@ for test_root in [ROOT / "app/src/test/java", ROOT / "app/src/androidTest/java"]
 updates_test = ROOT / "app/src/test/java/com/instagram/insfav/updates/AppUpdatesTest.java"
 if updates_test.exists():
     value = updates_test.read_text(encoding="utf-8")
-    value = value.replace('app.endsWith("plus") ? "BlackWare-AI/INSFAV" : "BlackWare-AI/INSFAV-Ultra"',
-                          'app.endsWith("ultra") ? "BlackWare-AI/INSFAV" : "BlackWare-AI/INSFAV-Ultra"')
-    value = value.replace('c.getPackageName().endsWith(".plus") ? "com.instagram.insfav" : "com.instagram.insfav.ultra"',
-                          'c.getPackageName().endsWith(".ultra") ? "com.instagram.insfav" : "com.instagram.insfav.ultra"')
+    value = value.replace('app.endsWith("plus")?"BlackWare-AI/INSFAV":"BlackWare-AI/INSFAV-Ultra"',
+                          'app.endsWith("ultra")?"BlackWare-AI/INSFAV":"BlackWare-AI/INSFAV-Ultra"')
+    value = value.replace('c.getPackageName().endsWith(".plus")?"com.instagram.insfav":"com.instagram.insfav.ultra"',
+                          'c.getPackageName().endsWith(".ultra")?"com.instagram.insfav":"com.instagram.insfav.ultra"')
     updates_test.write_text(value, encoding="utf-8")
 
 # Rename Plus-only publisher helper scripts to Ultra names.
