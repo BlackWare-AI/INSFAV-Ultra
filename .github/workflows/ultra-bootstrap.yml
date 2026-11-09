@@ -1,4 +1,4 @@
-name: Ultra one-time bootstrap and verification # retry after scoped process-card CSS fix
+name: Ultra one-time bootstrap and verification # fix cargo-ndk manifest discovery from crate directory
 
 on:
   push:
@@ -102,14 +102,16 @@ jobs:
 
       - name: Rust unit tests and reproducible Android ABI libraries
         run: |
+          set -euo pipefail
           cargo test --manifest-path rust/insfav-core/Cargo.toml
           cargo install cargo-ndk --version 3.5.4 --locked
+          cd rust/insfav-core
           cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
-            -o app/build/generated/ultraJniLibs \
-            build --release --manifest-path rust/insfav-core/Cargo.toml
-          test -s app/build/generated/ultraJniLibs/arm64-v8a/libinsfav_core.so
-          test -s app/build/generated/ultraJniLibs/armeabi-v7a/libinsfav_core.so
-          test -s app/build/generated/ultraJniLibs/x86_64/libinsfav_core.so
+            -o ../../app/build/generated/ultraJniLibs \
+            build --release
+          test -s ../../app/build/generated/ultraJniLibs/arm64-v8a/libinsfav_core.so
+          test -s ../../app/build/generated/ultraJniLibs/armeabi-v7a/libinsfav_core.so
+          test -s ../../app/build/generated/ultraJniLibs/x86_64/libinsfav_core.so
 
       - name: Android Java tests, lint and default Java-fallback APK
         run: |
