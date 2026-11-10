@@ -139,6 +139,73 @@ jobs:
           sudo udevadm trigger --name-match=kvm
           test -e /dev/kvm
 
+      - name: Prepare emulator verification script
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/ultra-emulator-check.sh" <<'BASH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          ./gradlew :app:connectedDebugAndroidTest -PultraNativeCore=true --no-daemon
+
+          TEST_LOG="$(find "$GITHUB_WORKSPACE" -type f -path '*/app/build/outputs/androidTest-results/connected/debug/*/testlog/test-results.log' -print -quit)"
+          if [[ -z "$TEST_LOG" ]]; then
+            echo "Instrumentation test log was not found. Candidate files:"
+            find "$GITHUB_WORKSPACE" -type f -name 'test-results.log' -print
+            exit 1
+          fi
+
+          cp "$TEST_LOG" "$RUNNER_TEMP/ultra-instrumentation-test-results.log"
+          grep -q 'ULTRA_NATIVE_JNI_EQUIVALENCE_OK' "$TEST_LOG"
+          grep -q 'POOL_MATRIX_OK' "$TEST_LOG"
+          grep -q 'BACKGROUND_HOME_TASK_OK' "$TEST_LOG"
+          adb logcat -d | grep 'ULTRA_NATIVE_BENCHMARK_RAW=' > "$RUNNER_TEMP/ultra-native-benchmark.txt"
+          test -s "$RUNNER_TEMP/ultra-native-benchmark.txt"
+
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          runner = Path(os.environ["RUNNER_TEMP"])
+          fallback = runner / "INSFAV-Ultra-java-fallback-debug.apk"
+          native = Path("app/build/outputs/apk/debug/app-debug.apk")
+          abi_root = Path("app/build/generated/ultraJniLibs")
+          assert fallback.is_file() and native.is_file()
+          abi = {}
+          for name in ("arm64-v8a", "armeabi-v7a", "x86_64"):
+              lib = abi_root / name / "libinsfav_core.so"
+              assert lib.is_file()
+              abi[name] = {"bytes": lib.stat().st_size, "sha256": hashlib.sha256(lib.read_bytes()).hexdigest()}
+          record = {
+              "runner": "Android emulator x86_64",
+              "javaFallbackApk": {"bytes": fallback.stat().st_size, "sha256": hashlib.sha256(fallback.read_bytes()).hexdigest()},
+              "nativeEnabledApk": {"bytes": native.stat().st_size, "sha256": hashlib.sha256(native.read_bytes()).hexdigest()},
+              "abiLibraries": abi,
+          }
+          with (runner / "ultra-native-benchmark.txt").open("a", encoding="utf-8") as stream:
+              stream.write("APK_SIZE_RAW=" + json.dumps(record, separators=(",", ":")) + chr(10))
+          PY
+
+          adb install -r "$RUNNER_TEMP/insfav-plus-source/app/build/outputs/apk/debug/app-debug.apk"
+          adb install -r app/build/outputs/apk/debug/app-debug.apk
+          adb shell monkey -p com.instagram.insfav.plus 1
+          adb shell monkey -p com.instagram.insfav.ultra 1
+          sleep 3
+          adb shell pm list packages | grep -qx 'package:com.instagram.insfav.plus'
+          adb shell pm list packages | grep -qx 'package:com.instagram.insfav.ultra'
+          adb shell run-as com.instagram.insfav.plus mkdir -p files
+          adb shell run-as com.instagram.insfav.ultra mkdir -p files
+          adb shell run-as com.instagram.insfav.plus sh -c 'printf plus-private > files/ultra-coexistence-probe.txt'
+          adb shell run-as com.instagram.insfav.ultra sh -c 'test ! -e files/ultra-coexistence-probe.txt'
+          adb shell run-as com.instagram.insfav.ultra sh -c 'printf ultra-private > files/ultra-coexistence-probe.txt'
+          adb shell run-as com.instagram.insfav.plus sh -c 'test "$(cat files/ultra-coexistence-probe.txt)" = plus-private'
+          adb shell run-as com.instagram.insfav.ultra sh -c 'test "$(cat files/ultra-coexistence-probe.txt)" = ultra-private'
+          adb shell pm list packages -U | grep -E 'com.instagram.insfav.(plus|ultra) '
+          adb shell run-as com.instagram.insfav.plus rm -f files/ultra-coexistence-probe.txt
+          adb shell run-as com.instagram.insfav.ultra rm -f files/ultra-coexistence-probe.txt
+          BASH
+          chmod +x "$RUNNER_TEMP/ultra-emulator-check.sh"
+
       - name: Run Ultra instrumentation, JNI equivalence and same-runner benchmark
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -149,60 +216,7 @@ jobs:
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            set -euo pipefail
-            ./gradlew :app:connectedDebugAndroidTest -PultraNativeCore=true --no-daemon
-            TEST_LOG="$(find "$GITHUB_WORKSPACE" -type f -path '*/app/build/outputs/androidTest-results/connected/debug/*/testlog/test-results.log' -print -quit)"
-            if [ -z "$TEST_LOG" ]; then
-              echo "Instrumentation test log was not found. Candidate files:"
-              find "$GITHUB_WORKSPACE" -type f -name 'test-results.log' -print
-              exit 1
-            fi
-            cp "$TEST_LOG" "$RUNNER_TEMP/ultra-instrumentation-test-results.log"
-            grep -q 'ULTRA_NATIVE_JNI_EQUIVALENCE_OK' "$TEST_LOG"
-            grep -q 'POOL_MATRIX_OK' "$TEST_LOG"
-            grep -q 'BACKGROUND_HOME_TASK_OK' "$TEST_LOG"
-            adb logcat -d | grep 'ULTRA_NATIVE_BENCHMARK_RAW=' > "$RUNNER_TEMP/ultra-native-benchmark.txt"
-            test -s "$RUNNER_TEMP/ultra-native-benchmark.txt"
-            python3 - <<'PY'
-            import hashlib, json, os
-            from pathlib import Path
-            runner = Path(os.environ["RUNNER_TEMP"])
-            fallback = runner / "INSFAV-Ultra-java-fallback-debug.apk"
-            native = Path("app/build/outputs/apk/debug/app-debug.apk")
-            abi_root = Path("app/build/generated/ultraJniLibs")
-            assert fallback.is_file() and native.is_file()
-            abi = {}
-            for name in ("arm64-v8a", "armeabi-v7a", "x86_64"):
-                lib = abi_root / name / "libinsfav_core.so"
-                assert lib.is_file()
-                abi[name] = {"bytes": lib.stat().st_size, "sha256": hashlib.sha256(lib.read_bytes()).hexdigest()}
-            record = {
-                "runner": "Android emulator x86_64",
-                "javaFallbackApk": {"bytes": fallback.stat().st_size, "sha256": hashlib.sha256(fallback.read_bytes()).hexdigest()},
-                "nativeEnabledApk": {"bytes": native.stat().st_size, "sha256": hashlib.sha256(native.read_bytes()).hexdigest()},
-                "abiLibraries": abi,
-            }
-            with (runner / "ultra-native-benchmark.txt").open("a", encoding="utf-8") as stream:
-                stream.write("APK_SIZE_RAW=" + json.dumps(record, separators=(",", ":")) + chr(10))
-            PY
-            adb install -r "$RUNNER_TEMP/insfav-plus-source/app/build/outputs/apk/debug/app-debug.apk"
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb shell monkey -p com.instagram.insfav.plus 1
-            adb shell monkey -p com.instagram.insfav.ultra 1
-            sleep 3
-            adb shell pm list packages | grep -qx 'package:com.instagram.insfav.plus'
-            adb shell pm list packages | grep -qx 'package:com.instagram.insfav.ultra'
-            adb shell run-as com.instagram.insfav.plus mkdir -p files
-            adb shell run-as com.instagram.insfav.ultra mkdir -p files
-            adb shell run-as com.instagram.insfav.plus sh -c 'printf plus-private > files/ultra-coexistence-probe.txt'
-            adb shell run-as com.instagram.insfav.ultra sh -c 'test ! -e files/ultra-coexistence-probe.txt'
-            adb shell run-as com.instagram.insfav.ultra sh -c 'printf ultra-private > files/ultra-coexistence-probe.txt'
-            adb shell run-as com.instagram.insfav.plus sh -c 'test "$(cat files/ultra-coexistence-probe.txt)" = plus-private'
-            adb shell run-as com.instagram.insfav.ultra sh -c 'test "$(cat files/ultra-coexistence-probe.txt)" = ultra-private'
-            adb shell pm list packages -U | grep -E 'com.instagram.insfav.(plus|ultra) '
-            adb shell run-as com.instagram.insfav.plus rm -f files/ultra-coexistence-probe.txt
-            adb shell run-as com.instagram.insfav.ultra rm -f files/ultra-coexistence-probe.txt
+          script: bash "$RUNNER_TEMP/ultra-emulator-check.sh"
 
       - name: Verify Ultra package identity, label, assets and debug APK
         run: |
