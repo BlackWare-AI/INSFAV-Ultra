@@ -258,6 +258,30 @@ jobs:
           grep -F "package: name='com.instagram.insfav.ultra'" "$RUNNER_TEMP/fallback-badging.txt"
           grep -F "application-label:'INSFAV Ultra'" "$RUNNER_TEMP/fallback-badging.txt"
           python3 tools/verify-apk.py "$FALLBACK" --version 1.0.0 --code 1 --output artifacts/ultra-java-fallback-apk.json
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import os
+          fallback = Path(os.environ["RUNNER_TEMP"]) / "INSFAV-Ultra-java-fallback-debug.apk"
+          release_candidates = sorted(Path("app/build/outputs/apk/release").glob("*.apk"))
+          assert len(release_candidates) == 1, f"Expected one release APK, found: {release_candidates}"
+          release = release_candidates[0]
+          native = Path("app/build/outputs/apk/debug/app-debug.apk")
+          def native_libs(apk):
+              with ZipFile(apk) as archive:
+                  return sorted(name for name in archive.namelist()
+                                if name.startswith("lib/") and name.endswith(".so"))
+          assert native_libs(fallback) == [], f"Java fallback must not package Rust libraries: {native_libs(fallback)}"
+          assert native_libs(release) == [], f"Release must not package opt-in Rust libraries: {native_libs(release)}"
+          expected = [
+              "lib/arm64-v8a/libinsfav_core.so",
+              "lib/armeabi-v7a/libinsfav_core.so",
+              "lib/x86_64/libinsfav_core.so",
+          ]
+          actual = native_libs(native)
+          assert actual == expected, f"Native instrumentation variant ABI libraries mismatch: {actual}"
+          print("PASS optional Rust packaging: fallback/release contain no .so; native variant contains all 3 ABIs")
+          PY
           grep -R "github.repository == 'BlackWare-AI/INSFAV-Plus'" .github && exit 1 || true
           grep -R "com.instagram.insfav.plus.test" app/src app/build.gradle && exit 1 || true
           python3 tools/verify-apk.py "$APK" --version 1.0.0 --code 1 --output artifacts/ultra-debug-apk.json
