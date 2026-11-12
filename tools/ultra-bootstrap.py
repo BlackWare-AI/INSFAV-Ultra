@@ -86,7 +86,7 @@ if updates_test.exists():
     value = updates_test.read_text(encoding="utf-8")
     value = value.replace(
         'app.endsWith("plus")?"BlackWare-AI/INSFAV":"BlackWare-AI/INSFAV-Ultra"',
-        'app.endsWith(".ultra")?"BlackWare-AI/INSFAV-Plus":"BlackWare-AI/INSFAV-Ultra"'
+        'app.endsWith(".ultra")?"BlackWare-AI/INSFAV":"BlackWare-AI/INSFAV-Ultra"'
     )
     value = value.replace(
         'c.getPackageName().endsWith(".plus")?"com.instagram.insfav":"com.instagram.insfav.ultra"',
@@ -182,6 +182,21 @@ for old, new in [
             except (UnicodeDecodeError, OSError): continue
             ns = s.replace(old, new)
             if ns != s: p.write_text(ns, encoding="utf-8")
+
+# Only an explicit manual dispatch can publish a release. Merging Ultra to main
+# must never publish automatically.
+release_workflow = ROOT / ".github/workflows/publish.yml"
+if release_workflow.exists():
+    value = release_workflow.read_text(encoding="utf-8")
+    push_trigger = """on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish.yml', 'version.properties']
+  workflow_dispatch:"""
+    if push_trigger not in value:
+        raise SystemExit("Expected copied release push trigger was not found")
+    value = value.replace(push_trigger, "on:\\n  workflow_dispatch:", 1)
+    release_workflow.write_text(value, encoding="utf-8")
 
 # Ultra begins with its own release certificate; do not inherit Plus's build-10
 # migration exception. Pin the first Ultra release and every later release to the
