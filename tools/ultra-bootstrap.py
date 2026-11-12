@@ -193,10 +193,9 @@ if publisher.exists():
         "if meta['versionCode']>=10:",
         "if meta['versionCode']>=1:"
     )
-    legacy_exception = (
-        "        if meta['versionCode']>=10 and prior['versionCode']<10 and prior_certificates=={LEGACY_CERTIFICATE}:\\n"
-        "            continue  # Explicitly approved migration; no in-place update from this legacy key.\\n"
-    )
+    legacy_exception = """        if meta['versionCode']>=10 and prior['versionCode']<10 and prior_certificates=={LEGACY_CERTIFICATE}:
+            continue  # Explicitly approved migration; no in-place update from this legacy key.
+"""
     if legacy_exception not in value:
         raise SystemExit("Expected Plus legacy-certificate exception was not found")
     value = value.replace(legacy_exception, "")
@@ -207,21 +206,21 @@ if publisher_tests.exists():
     value = publisher_tests.read_text(encoding="utf-8")
     value = value.replace('certificateSha256=["ab12"]',
                           'certificateSha256=[APPROVED_CERTIFICATE]')
-    legacy_test = `    def test_owner_approved_identity_can_replace_legacy_before_build_ten(self):
+    legacy_test = """    def test_owner_approved_identity_can_replace_legacy_before_build_ten(self):
         code, published, error = self.run_case(versionCode=10, certificateSha256=[APPROVED_CERTIFICATE],
             previous=dict(versionCode=9, certificateSha256=[LEGACY_CERTIFICATE]))
         self.assertEqual(0, code, error)
         self.assertTrue(published)
 
-`
-    strict_test = `    def test_ultra_never_accepts_the_legacy_plus_signer(self):
+"""
+    strict_test = """    def test_ultra_never_accepts_the_legacy_plus_signer(self):
         code, published, error = self.run_case(versionCode=2, certificateSha256=[APPROVED_CERTIFICATE],
             previous=dict(versionCode=1, certificateSha256=[LEGACY_CERTIFICATE]))
         self.assertNotEqual(0, code)
         self.assertFalse(published)
         self.assertIn("signing certificate must match", error)
 
-`
+"""
     if legacy_test not in value:
         raise SystemExit("Expected Plus key-migration test was not found")
     value = value.replace(legacy_test, strict_test)
@@ -229,13 +228,12 @@ if publisher_tests.exists():
                           "test_ultra_rejects_unknown_or_legacy_current_signers")
     publisher_tests.write_text(value, encoding="utf-8")
 
-# Rename the local signing helper and update its credential-file / keystore paths.
+# Rename the local signing helper and use the dedicated Ultra keystore filename.
 local_signer = ROOT / "tools/sign-local-ultra.py"
 if local_signer.exists():
     value = local_signer.read_text(encoding="utf-8")
     value = value.replace("Plus signing backup", "Ultra signing backup")
     value = value.replace("insfav-plus-release.jks", "INSFAV-Ultra-release.jks")
-    value = value.replace(".private/signing", ".private/signing")
     local_signer.write_text(value, encoding="utf-8")
 
 # Reproducible optional Rust/JNI build. The production native path stays disabled until
