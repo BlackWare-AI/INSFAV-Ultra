@@ -217,12 +217,12 @@ jobs:
           ULTRA_PROBE=/data/user/0/com.instagram.insfav.ultra/files/ultra-coexistence-probe.txt
           adb shell run-as com.instagram.insfav.plus mkdir -p /data/user/0/com.instagram.insfav.plus/files
           adb shell run-as com.instagram.insfav.ultra mkdir -p /data/user/0/com.instagram.insfav.ultra/files
-          adb shell run-as com.instagram.insfav.plus sh -c "printf plus-private > '$PLUS_PROBE'"
+          adb shell "run-as com.instagram.insfav.plus sh -c 'printf plus-private > $PLUS_PROBE'"
           if adb shell run-as com.instagram.insfav.ultra cat "$PLUS_PROBE" >/dev/null 2>&1; then
             echo "Ultra unexpectedly read Plus private storage"
             exit 1
           fi
-          adb shell run-as com.instagram.insfav.ultra sh -c "printf ultra-private > '$ULTRA_PROBE'"
+          adb shell "run-as com.instagram.insfav.ultra sh -c 'printf ultra-private > $ULTRA_PROBE'"
           if adb shell run-as com.instagram.insfav.plus cat "$ULTRA_PROBE" >/dev/null 2>&1; then
             echo "Plus unexpectedly read Ultra private storage"
             exit 1
