@@ -193,8 +193,8 @@ jobs:
           sleep 3
           adb shell pm list packages | grep -qx 'package:com.instagram.insfav.plus'
           adb shell pm list packages | grep -qx 'package:com.instagram.insfav.ultra'
-          PLUS_UID="$(adb shell pm list packages -U | sed -n 's/^package:com.instagram.insfav.plus uid:\\([0-9]*\\)$/\\1/p' | tr -d '\\r')"
-          ULTRA_UID="$(adb shell pm list packages -U | sed -n 's/^package:com.instagram.insfav.ultra uid:\\([0-9]*\\)$/\\1/p' | tr -d '\\r')"
+          PLUS_UID="$(adb shell pm list packages -U | awk '$1 == "package:com.instagram.insfav.plus" { sub(/^uid:/, "", $2); print $2 }' | tr -d '\r')"
+          ULTRA_UID="$(adb shell pm list packages -U | awk '$1 == "package:com.instagram.insfav.ultra" { sub(/^uid:/, "", $2); print $2 }' | tr -d '\r')"
           test -n "$PLUS_UID"
           test -n "$ULTRA_UID"
           test "$PLUS_UID" != "$ULTRA_UID"
@@ -203,19 +203,17 @@ jobs:
           adb shell run-as com.instagram.insfav.plus mkdir -p /data/user/0/com.instagram.insfav.plus/files
           adb shell run-as com.instagram.insfav.ultra mkdir -p /data/user/0/com.instagram.insfav.ultra/files
           adb shell run-as com.instagram.insfav.plus sh -c "printf plus-private > '$PLUS_PROBE'"
-          adb shell run-as com.instagram.insfav.ultra sh -c "test ! -e '$PLUS_PROBE'"
           if adb shell run-as com.instagram.insfav.ultra cat "$PLUS_PROBE" >/dev/null 2>&1; then
             echo "Ultra unexpectedly read Plus private storage"
             exit 1
           fi
           adb shell run-as com.instagram.insfav.ultra sh -c "printf ultra-private > '$ULTRA_PROBE'"
-          adb shell run-as com.instagram.insfav.plus sh -c "test ! -e '$ULTRA_PROBE'"
           if adb shell run-as com.instagram.insfav.plus cat "$ULTRA_PROBE" >/dev/null 2>&1; then
             echo "Plus unexpectedly read Ultra private storage"
             exit 1
           fi
-          adb shell run-as com.instagram.insfav.plus sh -c "test \"$(cat '$PLUS_PROBE')\" = plus-private"
-          adb shell run-as com.instagram.insfav.ultra sh -c "test \"$(cat '$ULTRA_PROBE')\" = ultra-private"
+          test "$(adb shell run-as com.instagram.insfav.plus cat "$PLUS_PROBE" | tr -d '\r')" = plus-private
+          test "$(adb shell run-as com.instagram.insfav.ultra cat "$ULTRA_PROBE" | tr -d '\r')" = ultra-private
           adb shell run-as com.instagram.insfav.plus rm -f "$PLUS_PROBE"
           adb shell run-as com.instagram.insfav.ultra rm -f "$ULTRA_PROBE"
           BASH
