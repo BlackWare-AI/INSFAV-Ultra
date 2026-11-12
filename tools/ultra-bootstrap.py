@@ -703,7 +703,7 @@ root.createListScroll=function(){
  function hideLater(){
   clearTimeout(hideTimer);
   if(!rail.hidden&&!hold&&!(keyboard&&rail.contains(document.activeElement)))
-   hideTimer=setTimeout(()=>rail.classList.add('idle'),1800);
+   hideTimer=setTimeout(()=>{if(!hold&&!(keyboard&&rail.contains(document.activeElement)))rail.classList.add('idle');},1800);
  }
  function wake(){rail.classList.remove('idle');hideLater();}
  function updateJump(top){
@@ -792,7 +792,7 @@ root.createListScroll=function(){
  rail.addEventListener('pointerenter',wake);
  root.addEventListener('blur',suspend);root.addEventListener('pagehide',suspend);
  document.addEventListener('visibilitychange',()=>{if(document.hidden)suspend();});
- root.addEventListener('scroll',schedule,{passive:true});
+  root.addEventListener('scroll',()=>{wake();schedule();},{passive:true});
  root.addEventListener('resize',()=>{cancel();schedule();},{passive:true});
  root.visualViewport?.addEventListener('resize',()=>{cancel();schedule();},{passive:true});
  new ResizeObserver(schedule).observe(app);new ResizeObserver(schedule).observe(nav);
@@ -908,7 +908,8 @@ const {chromium}=require('playwright');
    check(await page.locator('#scroll-jump').getAttribute('aria-label')==='Go to start of list','Away from top the control offers jump to beginning');
    await page.locator('#scroll-jump').tap();await page.waitForFunction(()=>document.scrollingElement.scrollTop===0);await settled(page);
    check((await metrics(page)).top===0,'Quick-jump returns to exact document beginning');
-   await page.evaluate(()=>scrollTo(0,(document.scrollingElement.scrollHeight-innerHeight)/2));await settled(page);m=await metrics(page);
+   await page.evaluate(()=>{document.querySelector('#main-scroll').classList.add('idle');scrollTo(0,(document.scrollingElement.scrollHeight-innerHeight)/2);});await settled(page);
+   check(!(await rail.evaluate(el=>el.classList.contains('idle'))),'Normal list scrolling reveals the controller');m=await metrics(page);
    check(Math.abs(m.offset-(m.track-m.hit)*m.top/m.max)<1,'Thumb position follows actual scroll ratio');
    check(m.height>=44&&m.hit>=56,'Visual handle and touch target meet minimum sizes');
    const thumb=page.locator('#scroll-thumb'),box=await thumb.boundingBox();
@@ -920,6 +921,7 @@ const {chromium}=require('playwright');
    await settled(page);m=await metrics(page);
    check(m.top>before.top&&m.now===m.top,'Finger movement updates document position and ARIA continuously');
    await thumb.dispatchEvent('pointercancel',{pointerId:1,pointerType:'touch',isPrimary:true});await settled(page);
+   if(count===20000){await page.waitForTimeout(1900);check(!(await rail.evaluate(el=>el.classList.contains('idle'))),'Slow active drags never hide the controller');}
    check(!(await metrics(page)).active&&(await metrics(page)).positionHidden,'Pointer cancellation clears drag and indicator');
    await thumb.focus();await page.keyboard.press('Home');await settled(page);check((await metrics(page)).top===0,'Home reaches start');
    await page.keyboard.press('End');await settled(page);check((await metrics(page)).top===(await metrics(page)).max,'End reaches exact end');
