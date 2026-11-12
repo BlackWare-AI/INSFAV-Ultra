@@ -124,6 +124,21 @@ jobs:
           ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest \
             -PultraNativeCore=true --no-daemon
 
+      - name: Build optimized unsigned Ultra release APK
+        run: |
+          set -euo pipefail
+          ./gradlew :app:assembleRelease --no-daemon
+          RELEASE_APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*release*.apk' -print -quit)"
+          test -n "$RELEASE_APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$RELEASE_APK" > "$RUNNER_TEMP/release-badging.txt"
+          grep -F "package: name='com.instagram.insfav.ultra'" "$RUNNER_TEMP/release-badging.txt"
+          grep -F "versionName='1.0.0'" "$RUNNER_TEMP/release-badging.txt"
+          grep -F "versionCode='1'" "$RUNNER_TEMP/release-badging.txt"
+          if grep -q "application-debuggable" "$RUNNER_TEMP/release-badging.txt"; then
+            echo "Release APK unexpectedly debuggable"
+            exit 1
+          fi
+
       - name: Build pinned Plus debug app for coexistence validation
         working-directory: ${{ runner.temp }}/insfav-plus-source
         run: |
@@ -256,6 +271,7 @@ jobs:
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/androidTest/debug/*.apk
+            app/build/outputs/apk/release/*.apk
             ${{ runner.temp }}/INSFAV-Ultra-java-fallback-debug.apk
             artifacts/ultra-java-fallback-apk.json
             ${{ runner.temp }}/ultra-instrumentation-test-results.log
