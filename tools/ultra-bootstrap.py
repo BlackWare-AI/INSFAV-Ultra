@@ -56,7 +56,7 @@ replacements = [
     ("secrets.KEY_ALIAS", "secrets.ULTRA_RELEASE_KEY_ALIAS"),
     ("plus-v", "ultra-v"),
     ("INSFAV-Plus-", "INSFAV-Ultra-"),
-    ("cffc756bf3d517b02780093e7d0d80ae737ce9e3b035a86a094f5698ffab35c8", "41603cb287ae84753f5c203ed9871a4780672f51643cd7c7df386c5b94bed664"),
+    ("cffc756bf3d517b02780093e7d0d80ae737ce9e3b035a86a094f5698ffab35c8", "0e81f9c91b48ca5611ab6073674856a21db16930713f08e23c31dd842163e791"),
     ("fetcher-queue.db", "ultra-fetcher-queue.db"),
     ("fetcher-cookies.enc", "ultra-fetcher-cookies.enc"),
     ("instagram-webview-cookies.enc", "ultra-instagram-webview-cookies.enc"),
@@ -171,6 +171,7 @@ if updates_test.exists():
 for old, new in [
     ("tools/publish-plus.py", "tools/publish-ultra.py"),
     ("tools/test-publish-plus.py", "tools/test-publish-ultra.py"),
+    ("tools/sign-local-plus.py", "tools/sign-local-ultra.py"),
 ]:
     src, dst = ROOT / old, ROOT / new
     if src.exists():
@@ -181,6 +182,61 @@ for old, new in [
             except (UnicodeDecodeError, OSError): continue
             ns = s.replace(old, new)
             if ns != s: p.write_text(ns, encoding="utf-8")
+
+# Ultra begins with its own release certificate; do not inherit Plus's build-10
+# migration exception. Pin the first Ultra release and every later release to the
+# dedicated owner-generated certificate.
+publisher = ROOT / "tools/publish-ultra.py"
+if publisher.exists():
+    value = publisher.read_text(encoding="utf-8")
+    value = value.replace(
+        "if meta['versionCode']>=10:",
+        "if meta['versionCode']>=1:"
+    )
+    legacy_exception = (
+        "        if meta['versionCode']>=10 and prior['versionCode']<10 and prior_certificates=={LEGACY_CERTIFICATE}:\\n"
+        "            continue  # Explicitly approved migration; no in-place update from this legacy key.\\n"
+    )
+    if legacy_exception not in value:
+        raise SystemExit("Expected Plus legacy-certificate exception was not found")
+    value = value.replace(legacy_exception, "")
+    publisher.write_text(value, encoding="utf-8")
+
+publisher_tests = ROOT / "tools/test-publish-ultra.py"
+if publisher_tests.exists():
+    value = publisher_tests.read_text(encoding="utf-8")
+    value = value.replace('certificateSha256=["ab12"]',
+                          'certificateSha256=[APPROVED_CERTIFICATE]')
+    legacy_test = `    def test_owner_approved_identity_can_replace_legacy_before_build_ten(self):
+        code, published, error = self.run_case(versionCode=10, certificateSha256=[APPROVED_CERTIFICATE],
+            previous=dict(versionCode=9, certificateSha256=[LEGACY_CERTIFICATE]))
+        self.assertEqual(0, code, error)
+        self.assertTrue(published)
+
+`
+    strict_test = `    def test_ultra_never_accepts_the_legacy_plus_signer(self):
+        code, published, error = self.run_case(versionCode=2, certificateSha256=[APPROVED_CERTIFICATE],
+            previous=dict(versionCode=1, certificateSha256=[LEGACY_CERTIFICATE]))
+        self.assertNotEqual(0, code)
+        self.assertFalse(published)
+        self.assertIn("signing certificate must match", error)
+
+`
+    if legacy_test not in value:
+        raise SystemExit("Expected Plus key-migration test was not found")
+    value = value.replace(legacy_test, strict_test)
+    value = value.replace("test_build_ten_rejects_unknown_and_legacy_current_signers",
+                          "test_ultra_rejects_unknown_or_legacy_current_signers")
+    publisher_tests.write_text(value, encoding="utf-8")
+
+# Rename the local signing helper and update its credential-file / keystore paths.
+local_signer = ROOT / "tools/sign-local-ultra.py"
+if local_signer.exists():
+    value = local_signer.read_text(encoding="utf-8")
+    value = value.replace("Plus signing backup", "Ultra signing backup")
+    value = value.replace("insfav-plus-release.jks", "INSFAV-Ultra-release.jks")
+    value = value.replace(".private/signing", ".private/signing")
+    local_signer.write_text(value, encoding="utf-8")
 
 # Reproducible optional Rust/JNI build. The production native path stays disabled until
 # same-runner results show a repeatable >=15% win without regressions.
