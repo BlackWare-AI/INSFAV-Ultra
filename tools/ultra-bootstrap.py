@@ -265,7 +265,7 @@ g = g.replace("testApplicationId 'com.instagram.insfav.ultra.test';",
               "testApplicationId 'com.instagram.insfav.ultra.test'; buildConfigField 'boolean', 'ULTRA_NATIVE_CORE', ultraNativeCore.toString();")
 if "jniLibs.srcDir" not in g:
     g = g.replace("buildFeatures { buildConfig true }",
-                  "buildFeatures { buildConfig true }\\n    if (ultraNativeCore) { sourceSets { main { jniLibs.srcDir(layout.buildDirectory.dir('generated/ultraJniLibs')) } } }")
+                  "buildFeatures { buildConfig true }\n    if (ultraNativeCore) { sourceSets { main { jniLibs.srcDir(layout.buildDirectory.dir('generated/ultraJniLibs')) } } }")
 if "buildRustCore" not in g:
     insertion = """
 if (ultraNativeCore) {
@@ -1002,10 +1002,10 @@ for path in ROOT.rglob("*"):
 # the repository-wide git diff --check gate without changing runtime behavior.
 inter_license = ROOT / "INTER-LICENSE.txt"
 if inter_license.exists():
-    normalized = "\\n".join(line.rstrip() for line in inter_license.read_text(encoding="utf-8").splitlines())
-    inter_license.write_text(normalized.rstrip("\\n") + "\\n", encoding="utf-8")
+    normalized = "\n".join(line.rstrip() for line in inter_license.read_text(encoding="utf-8").splitlines())
+    inter_license.write_text(normalized.rstrip("\n") + "\n", encoding="utf-8")
 legacy_py = ROOT / "docs/archive/legacy-tools/release/newkey_build9.py"
 if legacy_py.exists():
-    legacy_py.write_text(legacy_py.read_text(encoding="utf-8").rstrip() + "\\n", encoding="utf-8")
+    legacy_py.write_text(legacy_py.read_text(encoding="utf-8").rstrip() + "\n", encoding="utf-8")
 
 print("Ultra source bootstrap and scoped feature changes staged; pinned Plus source SHA:", PLUS_SHA)
