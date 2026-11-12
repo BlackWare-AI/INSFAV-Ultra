@@ -208,6 +208,10 @@ if publisher.exists():
         "if meta['versionCode']>=10:",
         "if meta['versionCode']>=1:"
     )
+    value = value.replace(
+        "APK must use the owner-approved signing certificate",
+        "APK must use the owner-approved signing certificate; signing certificate must match the dedicated Ultra key"
+    )
     legacy_exception = """        if meta['versionCode']>=10 and prior['versionCode']<10 and prior_certificates=={LEGACY_CERTIFICATE}:
             continue  # Explicitly approved migration; no in-place update from this legacy key.
 """
