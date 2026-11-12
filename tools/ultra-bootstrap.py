@@ -195,7 +195,7 @@ if release_workflow.exists():
   workflow_dispatch:"""
     if push_trigger not in value:
         raise SystemExit("Expected copied release push trigger was not found")
-    value = value.replace(push_trigger, "on:\\n  workflow_dispatch:", 1)
+    value = value.replace(push_trigger, "on:" + chr(10) + "  workflow_dispatch:", 1)
     release_workflow.write_text(value, encoding="utf-8")
 
 # Ultra begins with its own release certificate; do not inherit Plus's build-10
