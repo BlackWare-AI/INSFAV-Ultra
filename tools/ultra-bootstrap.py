@@ -920,8 +920,8 @@ const {chromium}=require('playwright');
    await thumb.dispatchEvent('pointermove',{pointerId:1,pointerType:'touch',isPrimary:true,clientX:box.x+24,clientY:box.y+before.track/2});
    await settled(page);m=await metrics(page);
    check(m.top>before.top&&m.now===m.top,'Finger movement updates document position and ARIA continuously');
-   await thumb.dispatchEvent('pointercancel',{pointerId:1,pointerType:'touch',isPrimary:true});await settled(page);
    if(count===20000){await page.waitForTimeout(1900);check(!(await rail.evaluate(el=>el.classList.contains('idle'))),'Slow active drags never hide the controller');}
+   await thumb.dispatchEvent('pointercancel',{pointerId:1,pointerType:'touch',isPrimary:true});await settled(page);
    check(!(await metrics(page)).active&&(await metrics(page)).positionHidden,'Pointer cancellation clears drag and indicator');
    await thumb.focus();await page.keyboard.press('Home');await settled(page);check((await metrics(page)).top===0,'Home reaches start');
    await page.keyboard.press('End');await settled(page);check((await metrics(page)).top===(await metrics(page)).max,'End reaches exact end');
