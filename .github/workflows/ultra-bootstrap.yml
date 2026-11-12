@@ -193,16 +193,31 @@ jobs:
           sleep 3
           adb shell pm list packages | grep -qx 'package:com.instagram.insfav.plus'
           adb shell pm list packages | grep -qx 'package:com.instagram.insfav.ultra'
-          adb shell run-as com.instagram.insfav.plus mkdir -p files
-          adb shell run-as com.instagram.insfav.ultra mkdir -p files
-          adb shell run-as com.instagram.insfav.plus sh -c 'printf plus-private > files/ultra-coexistence-probe.txt'
-          adb shell run-as com.instagram.insfav.ultra sh -c 'test ! -e files/ultra-coexistence-probe.txt'
-          adb shell run-as com.instagram.insfav.ultra sh -c 'printf ultra-private > files/ultra-coexistence-probe.txt'
-          adb shell run-as com.instagram.insfav.plus sh -c 'test "$(cat files/ultra-coexistence-probe.txt)" = plus-private'
-          adb shell run-as com.instagram.insfav.ultra sh -c 'test "$(cat files/ultra-coexistence-probe.txt)" = ultra-private'
-          adb shell pm list packages -U | grep -E 'com.instagram.insfav.(plus|ultra) '
-          adb shell run-as com.instagram.insfav.plus rm -f files/ultra-coexistence-probe.txt
-          adb shell run-as com.instagram.insfav.ultra rm -f files/ultra-coexistence-probe.txt
+          PLUS_UID="$(adb shell pm list packages -U | sed -n 's/^package:com.instagram.insfav.plus uid:\\([0-9]*\\)$/\\1/p' | tr -d '\\r')"
+          ULTRA_UID="$(adb shell pm list packages -U | sed -n 's/^package:com.instagram.insfav.ultra uid:\\([0-9]*\\)$/\\1/p' | tr -d '\\r')"
+          test -n "$PLUS_UID"
+          test -n "$ULTRA_UID"
+          test "$PLUS_UID" != "$ULTRA_UID"
+          PLUS_PROBE=/data/user/0/com.instagram.insfav.plus/files/ultra-coexistence-probe.txt
+          ULTRA_PROBE=/data/user/0/com.instagram.insfav.ultra/files/ultra-coexistence-probe.txt
+          adb shell run-as com.instagram.insfav.plus mkdir -p /data/user/0/com.instagram.insfav.plus/files
+          adb shell run-as com.instagram.insfav.ultra mkdir -p /data/user/0/com.instagram.insfav.ultra/files
+          adb shell run-as com.instagram.insfav.plus sh -c "printf plus-private > '$PLUS_PROBE'"
+          adb shell run-as com.instagram.insfav.ultra sh -c "test ! -e '$PLUS_PROBE'"
+          if adb shell run-as com.instagram.insfav.ultra cat "$PLUS_PROBE" >/dev/null 2>&1; then
+            echo "Ultra unexpectedly read Plus private storage"
+            exit 1
+          fi
+          adb shell run-as com.instagram.insfav.ultra sh -c "printf ultra-private > '$ULTRA_PROBE'"
+          adb shell run-as com.instagram.insfav.plus sh -c "test ! -e '$ULTRA_PROBE'"
+          if adb shell run-as com.instagram.insfav.plus cat "$ULTRA_PROBE" >/dev/null 2>&1; then
+            echo "Plus unexpectedly read Ultra private storage"
+            exit 1
+          fi
+          adb shell run-as com.instagram.insfav.plus sh -c "test \"$(cat '$PLUS_PROBE')\" = plus-private"
+          adb shell run-as com.instagram.insfav.ultra sh -c "test \"$(cat '$ULTRA_PROBE')\" = ultra-private"
+          adb shell run-as com.instagram.insfav.plus rm -f "$PLUS_PROBE"
+          adb shell run-as com.instagram.insfav.ultra rm -f "$ULTRA_PROBE"
           BASH
           chmod +x "$RUNNER_TEMP/ultra-emulator-check.sh"
 
